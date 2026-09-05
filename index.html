@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,12 +17,9 @@
     text-align: center;
     padding: 24px;
   }
-  .card {
-    max-width: 360px;
-  }
+  .card { max-width: 360px; }
   .spinner {
-    width: 36px;
-    height: 36px;
+    width: 36px; height: 36px;
     border: 3px solid #333;
     border-top-color: #f5f5f5;
     border-radius: 50%;
@@ -30,17 +27,8 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  h1 {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  p {
-    font-size: 14px;
-    color: #aaa;
-    line-height: 1.5;
-    margin-bottom: 20px;
-  }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  p { font-size: 14px; color: #aaa; line-height: 1.5; margin-bottom: 20px; }
   .btn {
     display: inline-block;
     background: #f5f5f5;
@@ -52,6 +40,7 @@
     border-radius: 999px;
     border: none;
     cursor: pointer;
+    margin: 6px;
   }
   .hidden { display: none; }
 </style>
@@ -62,12 +51,12 @@
   <div id="loading">
     <div class="spinner"></div>
     <h1>Máris ott vagyunk...</h1>
-    <p>Ha nem történik semmi, kattints lent....</p>
+    <p>Ha nem történik semmi, kattints lent...</p>
   </div>
 
   <div id="manual" class="hidden">
     <h1>Kattints a folytatásért</h1>
-    <p>A legjobb élményért, kérlek folytasd böngészőben...</p>
+    <p id="manualText">A legjobb élményért, kérlek folytasd böngészőben...</p>
     <button class="btn" onclick="goToDestination()">Katt a folytatáshoz</button>
   </div>
 </div>
@@ -77,24 +66,56 @@
   const DESTINATION_URL = "https://www.fanvue.com/bogardorcsi";
   // =============================
 
-  function isInAppBrowser() {
+  const DEST_NO_SCHEME = DESTINATION_URL.replace(/^https?:\/\//, "");
+
+  function getPlatform() {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
-    return /TikTok|musical_ly|BytedanceWebview|FBAN|FBAV|Instagram/i.test(ua);
+    const isInApp = /TikTok|musical_ly|BytedanceWebview|FBAN|FBAV|Instagram/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    let platform = "desktop";
+    if (isIOS) platform = "ios";
+    else if (isAndroid) platform = "android";
+    return { platform, isInApp };
   }
 
   function goToDestination() {
+    const p = getPlatform();
+    const platform = p.platform;
+    const isInApp = p.isInApp;
+
+    if (isInApp && platform === "ios") {
+      window.location.href = "x-safari-https://" + DEST_NO_SCHEME;
+      setTimeout(function () { window.location.href = DESTINATION_URL; }, 1200);
+      return;
+    }
+
+    if (isInApp && platform === "android") {
+      const intentUrl = "intent://" + DEST_NO_SCHEME +
+        "#Intent;scheme=https;package=com.android.chrome;end;";
+      window.location.href = intentUrl;
+      setTimeout(function () { window.location.href = DESTINATION_URL; }, 1200);
+      return;
+    }
+
     window.location.href = DESTINATION_URL;
   }
 
   window.addEventListener("DOMContentLoaded", function () {
-    if (isInAppBrowser()) {
-      // In-app browsers often block or misbehave with the destination.
-      // Show a manual "tap to continue" button instead of auto-redirecting,
-      // since auto-redirects are what most easily get flagged.
+    const p = getPlatform();
+    const platform = p.platform;
+    const isInApp = p.isInApp;
+
+    if (isInApp) {
       document.getElementById("loading").classList.add("hidden");
       document.getElementById("manual").classList.remove("hidden");
+      document.getElementById("manualText").textContent =
+        platform === "ios"
+          ? "Tap below to continue in Safari."
+          : platform === "android"
+          ? "Tap below to continue in Chrome."
+          : "Tap below to continue.";
     } else {
-      // Regular browser: redirect automatically after a short delay.
       setTimeout(goToDestination, 500);
     }
   });
