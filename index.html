@@ -142,9 +142,6 @@
   }
 
   function attemptTikTokEscape(platform) {
-    // Egyből, felhasználói kattintás nélkül megpróbáljuk kilökni a
-    // TikTok webviewből. Ha 900ms múlva még mindig itt vagyunk
-    // (az oldal nem lett elhagyva), átváltunk a másolós nézetre.
     let handled = false;
     window.addEventListener("pagehide", function () { handled = true; });
     window.addEventListener("visibilitychange", function () {
@@ -172,13 +169,9 @@
     const isInstagram = p.isInstagram;
 
     if (isTikTok) {
-      // Azonnal próbálkozunk, nincs köztes "katt a folytatáshoz" lépés —
-      // a lehető legkevesebb súrlódás a funnel miatt.
       attemptTikTokEscape(platform);
       return;
     }
-
-    // Instagram, normál böngésző, PC: egyenes, azonnali átirányítás.
     window.location.href = DESTINATION_URL;
   });
 </script>
