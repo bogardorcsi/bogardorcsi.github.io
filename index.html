@@ -79,13 +79,6 @@
   <div id="loading">
     <div class="spinner"></div>
     <h1>Máris ott vagyunk...</h1>
-    <p>Ha nem történik semmi, kattints lent...</p>
-  </div>
-
-  <div id="manual" class="hidden">
-    <h1>Kattints a folytatásért</h1>
-    <p id="manualText">A legjobb élményért, kérlek folytasd böngészőben...</p>
-    <button class="btn" onclick="goToDestination()">Katt a folytatáshoz</button>
   </div>
 
   <div id="copyFallback" class="hidden">
@@ -120,7 +113,6 @@
 
   function showCopyFallback() {
     document.getElementById("loading").classList.add("hidden");
-    document.getElementById("manual").classList.add("hidden");
     document.getElementById("copyFallback").classList.remove("hidden");
   }
 
@@ -149,38 +141,26 @@
     }
   }
 
-  function goToDestination() {
-    const p = getPlatform();
-    const platform = p.platform;
-    const isTikTok = p.isTikTok;
+  function attemptTikTokEscape(platform) {
+    // Egyből, felhasználói kattintás nélkül megpróbáljuk kilökni a
+    // TikTok webviewből. Ha 900ms múlva még mindig itt vagyunk
+    // (az oldal nem lett elhagyva), átváltunk a másolós nézetre.
+    let handled = false;
+    window.addEventListener("pagehide", function () { handled = true; });
+    window.addEventListener("visibilitychange", function () {
+      if (document.hidden) handled = true;
+    });
 
-    if (isTikTok && platform === "ios") {
-      // Megpróbáljuk kényszeríteni Safarira; ha az OS nem ismeri fel a sémát,
-      // 900ms után átváltunk a másolós fallbackre ahelyett, hogy közvetlenül
-      // a Fanvue-ra irányítanánk (az a tiltáshoz vezet a TikTok webviewben).
-      let handled = false;
+    if (platform === "ios") {
       window.location.href = "x-safari-https://" + DEST_NO_SCHEME;
-      setTimeout(function () {
-        if (!handled) showCopyFallback();
-      }, 900);
-      window.addEventListener("pagehide", function () { handled = true; });
-      return;
-    }
-
-    if (isTikTok && platform === "android") {
-      let handled = false;
-      const intentUrl = "intent://" + DEST_NO_SCHEME +
+    } else if (platform === "android") {
+      window.location.href = "intent://" + DEST_NO_SCHEME +
         "#Intent;scheme=https;package=com.android.chrome;end;";
-      window.location.href = intentUrl;
-      setTimeout(function () {
-        if (!handled) showCopyFallback();
-      }, 900);
-      window.addEventListener("pagehide", function () { handled = true; });
-      return;
     }
 
-    // Nem TikTok (pl. Instagram) vagy desktop: simán mehet a link
-    window.location.href = DESTINATION_URL;
+    setTimeout(function () {
+      if (!handled) showCopyFallback();
+    }, 900);
   }
 
   window.addEventListener("DOMContentLoaded", function () {
@@ -191,28 +171,15 @@
     const isTikTok = p.isTikTok;
     const isInstagram = p.isInstagram;
 
-    if (isInstagram) {
-      // Instagram simán megnyitja, nincs szükség extra lépésre
-      setTimeout(function () { window.location.href = DESTINATION_URL; }, 400);
-      return;
-    }
-
     if (isTikTok) {
-      // Előbb megpróbáljuk a scheme-trükköt, csak ha az nem sikerül
-      // 900ms alatt, akkor ugrunk a másolós gombra.
-      document.getElementById("loading").classList.add("hidden");
-      document.getElementById("manual").classList.remove("hidden");
-      document.getElementById("manualText").textContent =
-        platform === "ios"
-          ? "Koppints lent a folytatáshoz Safariban."
-          : "Koppints lent a folytatáshoz Chrome-ban.";
+      // Azonnal próbálkozunk, nincs köztes "katt a folytatáshoz" lépés —
+      // a lehető legkevesebb súrlódás a funnel miatt.
+      attemptTikTokEscape(platform);
       return;
     }
 
-    // Normál böngésző (Safari, Chrome, PC): egyenes átirányítás
-    setTimeout(function () {
-      window.location.href = DESTINATION_URL;
-    }, 500);
+    // Instagram, normál böngésző, PC: egyenes, azonnali átirányítás.
+    window.location.href = DESTINATION_URL;
   });
 </script>
 
